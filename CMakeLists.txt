@@ -49,14 +49,10 @@ if(NOT ${OpenCV_FOUND})
   endif()
 endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  cmake_modules
-)
-
 find_package(Eigen3 REQUIRED)
 
 # Set build flags, depending on the architecture
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
@@ -78,28 +74,10 @@ if (CMAKE_BUILD_TYPE MATCHES Release)
 
 endif()
 
-# For downstream packages in catkin
-set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
-set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
-
-# Configure this package
-catkin_package(
-	DEPENDS EIGEN3
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR}
-  LIBRARIES x
-)
-
 ## Package internal and additional locations of header files
 ## Separating the projects include directory from {catkin_INCLUDE_DIRS}
 ## allows to tag that with SYSTEM, which disables GCC warnings for
 ## these (all the ros header, opencv, ..)
-include_directories (include)
-
-include_directories (SYSTEM
-  ${OpenCV_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIR}
-)
 
 set (SOURCE
   src/x/ekf/ekf.cpp
@@ -125,10 +103,45 @@ set (SOURCE
 
 )
 
-add_library (x ${SOURCE})
+add_library(x ${SOURCE})
 
 # Additional libraries to link against
 target_link_libraries(x
   ${OpenCV_LIBRARIES}
-  ${catkin_LIBRARIES}
+)
+
+target_include_directories(x
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_include_directories(x
+  SYSTEM PUBLIC
+    ${OpenCV_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
+)
+
+include(GNUInstallDirs)
+
+# Install
+install(TARGETS x
+  EXPORT xConfig
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# headers
+install(DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+
+# Make library "findable"
+install(EXPORT xConfig
+  FILE xConfig.cmake
+  NAMESPACE x::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/x
 )
